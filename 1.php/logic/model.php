@@ -6,7 +6,7 @@ class Model {
 		$this->realization = $realization;
 	}
 	
-	public function getModelElement ($root = null, $stringData = true, $reversiveModelId="") {
+	public function getModelElement ($root = null, $stringData = false, $reversiveModelId="") {
 		$returnValues = array();
 		$this->realization->ready();
 		$items = $this->realization->getElement($root);
@@ -16,22 +16,26 @@ class Model {
 			$rootId = $reversiveModelId == "" ? (string)$logicItemId : $reversiveModelId . "." . $logicItemId;
 			if ($item['isElement'] == false) {
 				if ($stringData) $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['stringData']
+					"id"      => $rootId,
+					"data"    => $item['stringData'],
+					"root_id" => $item['id']
 				);
 				else $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['data']
+					"id"      => $rootId,
+					"data"    => $item['data'],
+					"root_id" => $item['id']
 				);
 			}
 			else {
 				if ($stringData) $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['stringData']
+					"id"      => $rootId,
+					"data"    => $item['stringData'],
+					"root_id" => $item['id']
 				);
 				else $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['data']
+					"id"      => $rootId,
+					"data"    => $item['data'],
+					"root_id" => $item['id']
 				);
 				
 				$childElements = $this->getModelElement(
@@ -41,8 +45,9 @@ class Model {
 				);
 				foreach ($childElements as $childElement) {
 					$returnValues[] = array (
-						"id"   => $childElement['id'],
-						"data" => $childElement['data']
+						"id"      => $childElement['id'],
+						"data"    => $childElement['data'],
+						"root_id" => $item['id']
 					);
 				}
 			}

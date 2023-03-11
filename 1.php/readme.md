@@ -20,6 +20,7 @@
 # Постановка задачи
 Необходимо написать страницу на php, которая будет выводить информацию из модели о его родителях и наследниках. При этом, дополнительно предусмотреть возможность вывода наследников отдельного родителя, введённого в параметрах *(это условие не обязательно)*
 # Реализация
+
 ## Разработка модели
 Поскольку вывод информации происходит из абстрактной модели, нам необходимо сделать собственную реализацию модели. Далее, обеспечить модульность, чтобы можно было менять практическую реализацию модели *(например, заменить запросы к БД на запросы к файловой системе и т.д.)*.  
 При разработки модели было принято решение реализовать класс для модели и для её реализации:
@@ -103,7 +104,7 @@ class Model {
 		$this->realization = $realization;
 	}
 	
-	public function getModelElement ($root = null, $stringData = true, $reversiveModelId="") {
+	public function getModelElement ($root = null, $stringData = false, $reversiveModelId="") {
 		$returnValues = array();
 		$this->realization->ready();
 		$items = $this->realization->getElement($root);
@@ -113,22 +114,26 @@ class Model {
 			$rootId = $reversiveModelId == "" ? (string)$logicItemId : $reversiveModelId . "." . $logicItemId;
 			if ($item['isElement'] == false) {
 				if ($stringData) $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['stringData']
+					"id"      => $rootId,
+					"data"    => $item['stringData'],
+					"root_id" => $item['id']
 				);
 				else $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['data']
+					"id"      => $rootId,
+					"data"    => $item['data'],
+					"root_id" => $item['id']
 				);
 			}
 			else {
 				if ($stringData) $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['stringData']
+					"id"      => $rootId,
+					"data"    => $item['stringData'],
+					"root_id" => $item['id']
 				);
 				else $returnValues[] = array (
-					"id"   => $rootId,
-					"data" => $item['data']
+					"id"      => $rootId,
+					"data"    => $item['data'],
+					"root_id" => $item['id']
 				);
 				
 				$childElements = $this->getModelElement(
@@ -138,8 +143,9 @@ class Model {
 				);
 				foreach ($childElements as $childElement) {
 					$returnValues[] = array (
-						"id"   => $childElement['id'],
-						"data" => $childElement['data']
+						"id"      => $childElement['id'],
+						"data"    => $childElement['data'],
+						"root_id" => $item['id']
 					);
 				}
 			}
@@ -301,3 +307,52 @@ class RealizationMySQL extends Realization {  // Создал класс, нас
 	}
 }
 ```
+## Разработка основной страницы
+Далее, вся реализация была помещена в папку logic и разбита на два файла: model.php *(Базовый класс интерфейса модели и абстрактный реализации)* и mysql-realization.php *(Класс реализации MySQL)*.  
+Далее можно приступить к непосредственной реализации программы: в корне мы создадим два файла: method.php и index.php.  
+
+В method.php будет расположена функция, принимающая в себя параметр рассматриваемого элемента (либо принимающий факт его отсутствия (null)) и возвращающая ответ. Отдельно созданный файл нужен, чтобы в случае надобности применения данных из данной программы с заданными параметрами мы могли их импортировать как модуль программы, а не делать отдельно HTTP-запрос к странице.
+```php
+include "./logic/mysql-realization.php";
+
+function output ($root = "") {
+	$itemIerarchyId = "";  // Без этого параметра у нас будет выводиться с единицы, а не с номера элемента в общей иерархии
+	
+	$model = new Model(
+		new RealizationMySQL("127.0.0.1", "root", "root", "realizations-db")
+	);
+	
+	if ($root == "" || $root == null) {
+		$root = null;
+	}
+	else {
+		$modelElementsForSearch = $model->getModelElement(null, true);
+		foreach ($modelElementsForSearch as $i) {
+			if ($i['id'] == $root) {
+				$itemIerarchyId = $i['id'];
+				$root = $i['root_id'];
+				break;
+			}
+		}
+	}
+	
+	$modelElements = $model->getModelElement($root, true, $itemIerarchyId);
+	$outputList = array();
+	
+	foreach ($modelElements as $item) {
+		$outputList[] = $item['id'] . ' ' . $item['data'];
+	}
+	
+	return implode("\n", $outputList);
+}
+```
+
+Далее, мы вызываем данную функцию из index.php:
+```php
+/* Отключим WARNING */
+error_reporting(E_ERROR | E_PARSE);
+include "method.php";
+
+die(output($_GET['root']));
+```
+Проект завершён.
