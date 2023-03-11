@@ -16,5 +16,7 @@ CREATE TABLE public.dep_names (
     CONSTRAINT dep_names_pkey PRIMARY KEY (id)
 )
 dep_names .department_id (многие) ссылается на departments.id (к одному)
-```
-1.1. Запрос (SELECT) для построения списка departments.id, для которых нет связанных названий (строк в dep_names).
+```  
+Все запросы будут написаны на языке запросов SQL  
+  
+1.1. Запрос (SELECT) для построения списка departments.id, для которых нет связанных названий (строк в dep_names).  
