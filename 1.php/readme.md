@@ -65,13 +65,13 @@ class Model {
 	private $realization;
 	
 	public function __construct( $realization ) {
-		$this->name = $realization;
+		$this->realization = $realization;
 	}
 	
 	public function getModelElement ($root = null, $stringData = true) {
 		$returnValues = array();
 		while (true) {
-			$items = $realization->getElement($root);
+			$items = $this->realization->getElement($root);
 			foreach ($items as $item) {
 				if ($item->isElement) {
 					if ($stringData) $returnValues[] = $item->stringData;
@@ -81,7 +81,7 @@ class Model {
 					if ($stringData) $returnValues[] = $item->stringData;
 					else $returnValues[] = $item->data;
 					
-					$childElements = getModelElement($item->id, $stringData);
+					$childElements = $this->getModelElement($item->id, $stringData);
 					foreach ($childElements as $childElement) {
 						if ($stringData) $returnValues[] = $childElements->stringData;
 						else $returnValues[] = $childElements->data;
@@ -95,4 +95,62 @@ class Model {
 }
 ```
 Как можно понять, <Model.object>->getModelElement(); является рекурсивным методом и из этого вытекают как плюсы, так и минусы.  
-Главным минусом является то, что при запросах к БД, у нас вместо одного запроса, который вернёт остальные элементы будет несколько запросов к БД.
+Главным минусом является то, что при запросах к БД, у нас вместо одного запроса, который вернёт остальные элементы будет несколько запросов к БД. Поэтому, при первой инициализации экземпляра класса Realization у нас должен происходить только один запрос. В связи с чем, мы меняем код в <Model.object>->getModelElement(); а также его входные параметры.
+```php
+class Model {
+	private $realization;
+	
+	public function __construct( $realization ) {
+		$this->realization = $realization;
+	}
+	
+	public function getModelElement ($root = null, $stringData = true) {
+		$returnValues = array();
+		$this->realization->ready();
+		while (true) {
+			$items = $this->realization->getElement($root);
+			foreach ($items as $item) {
+				if ($item->isElement) {
+					if ($stringData) $returnValues[] = $item->stringData;
+					else $returnValues[] = $item->data;
+				}
+				else {
+					if ($stringData) $returnValues[] = $item->stringData;
+					else $returnValues[] = $item->data;
+					
+					$childElements = $this->getModelElement($item->id, $stringData);
+					foreach ($childElements as $childElement) {
+						if ($stringData) $returnValues[] = $childElements->stringData;
+						else $returnValues[] = $childElements->data;
+					}
+				}
+			}
+		}
+		
+		$this->realization->finish();
+		return $returnValues;
+	}
+}
+```
+
+Как мы видим, для класса Realization появились новые методы. Метод ready будет означать, что реализации необходимо совершить запрос и записать его в кэш, чтобы при помощи метода getElement мы могли вместо отправки запросов отправлять нужные данные из кэша. Реализуем это:  
+```php
+class Realization {
+	public $isReady = false;
+	
+	public function getElement ($root = null) {
+		// ... код реализации
+	}
+	
+	public function ready () {
+		if (!$this->isReady) {
+			$this->isReady = true;
+			// ... Запрос и запись это в кэш
+		}
+	}
+	
+	public function finish () {
+		$this->isReady = false;
+	}
+}
+```
