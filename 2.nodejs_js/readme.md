@@ -2,7 +2,7 @@
 2. Есть объекты вида
 ```typescript
 // Я изменил название для наглядности и для корректного форматирования в .md
-{	id         : integer,
+{	id         : int,
 	time_stamp : timestamp,
 	parent:    : parentObject,
 	contact:   : {server: ..., email: ..., users: [name, ...]},
