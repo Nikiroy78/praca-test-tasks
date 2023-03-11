@@ -35,3 +35,4 @@ WHERE (
 	SELECT count(name_tsvector) FROM dep_names WHERE dep_names.id = departments.id AND dep_names.name_tsvector != NULL
 ) >= 2;
 ```
+1.3. Запрос (SELECT) для построения списка departments.\*, для каждого указать только 1 название (даже если их несколько) с минимальным dep_names.id.
