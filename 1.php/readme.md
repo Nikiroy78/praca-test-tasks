@@ -63,8 +63,8 @@ class Model {
 	private $realization;
 	
 	public function __construct( $realization ) {
-        $this->name = $realization;
-    }
+		$this->name = $realization;
+	}
 	
 	public function getModelElement ($root = null) {
 	}
