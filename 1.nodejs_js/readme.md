@@ -15,8 +15,8 @@ CREATE TABLE public.dep_names (
     name_tsvector tsvector,
     CONSTRAINT dep_names_pkey PRIMARY KEY (id)
 )
-dep_names .department_id (многие) ссылается на departments.id (к одному)
+;; dep_names .department_id (многие) ссылается на departments.id (к одному)
 ```  
-Все запросы будут написаны на языке запросов SQL  
+Все запросы будут написаны на языке запросов SQL.  
   
 1.1. Запрос (SELECT) для построения списка departments.id, для которых нет связанных названий (строк в dep_names).  
