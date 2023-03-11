@@ -24,7 +24,7 @@
 Поскольку вывод информации происходит из абстрактной модели, нам необходимо сделать собственную реализацию модели. Далее, обеспечить модульность, чтобы можно было менять практическую реализацию модели *(например, заменить запросы к БД на запросы к файловой системе и т.д.)*.  
 При разработки модели было принято решение реализовать класс для модели и для её реализации:
 ```php
-class Realization {
+abstract class Realization {
 	public function getElement ($root = null) {
 		// ... код реализации
 		/*
@@ -70,22 +70,20 @@ class Model {
 	
 	public function getModelElement ($root = null, $stringData = true) {
 		$returnValues = array();
-		while (true) {
-			$items = $this->realization->getElement($root);
-			foreach ($items as $item) {
-				if ($item->isElement) {
-					if ($stringData) $returnValues[] = $item->stringData;
-					else $returnValues[] = $item->data;
-				}
-				else {
-					if ($stringData) $returnValues[] = $item->stringData;
-					else $returnValues[] = $item->data;
-					
-					$childElements = $this->getModelElement($item->id, $stringData);
-					foreach ($childElements as $childElement) {
-						if ($stringData) $returnValues[] = $childElements->stringData;
-						else $returnValues[] = $childElements->data;
-					}
+		$items = $this->realization->getElement($root);
+		
+		foreach ($items as $item) {
+			if ($item->isElement) {
+				if ($stringData) $returnValues[] = $item['stringData'];
+				else $returnValues[] = $item['data'];
+			}
+			else {
+				if ($stringData) $returnValues[] = $item['stringData'];
+				else $returnValues[] = $item['data'];
+				
+				$childElements = $this->getModelElement($item->id, $stringData);
+				foreach ($childElements as $childElement) {
+					$returnValues[] = $childElement['data'];
 				}
 			}
 		}
@@ -95,7 +93,8 @@ class Model {
 }
 ```
 Как можно понять, <Model.object>->getModelElement(); является рекурсивным методом и из этого вытекают как плюсы, так и минусы.  
-Главным минусом является то, что при запросах к БД, у нас вместо одного запроса, который вернёт остальные элементы будет несколько запросов к БД. Поэтому, при первой инициализации экземпляра класса Realization у нас должен происходить только один запрос. В связи с чем, мы меняем код в <Model.object>->getModelElement(); а также его входные параметры.
+Главным минусом является то, что при запросах к БД, у нас вместо одного запроса, который вернёт остальные элементы будет несколько запросов к БД. Поэтому, при первой инициализации экземпляра класса Realization у нас должен происходить только один запрос. В связи с чем, мы меняем код в <Model.object>->getModelElement(); а также его входные параметры.  
+Вдобавок ко всему, нам необходимо найти способ индексации элемента, чтобы его индекс был привязан к родительскому элементу.
 ```php
 class Model {
 	private $realization;
@@ -104,30 +103,50 @@ class Model {
 		$this->realization = $realization;
 	}
 	
-	public function getModelElement ($root = null, $stringData = true) {
+	public function getModelElement ($root = null, $stringData = true, $reversiveModelId="") {
 		$returnValues = array();
 		$this->realization->ready();
-		while (true) {
-			$items = $this->realization->getElement($root);
-			foreach ($items as $item) {
-				if ($item->isElement) {
-					if ($stringData) $returnValues[] = $item->stringData;
-					else $returnValues[] = $item->data;
-				}
-				else {
-					if ($stringData) $returnValues[] = $item->stringData;
-					else $returnValues[] = $item->data;
-					
-					$childElements = $this->getModelElement($item->id, $stringData);
-					foreach ($childElements as $childElement) {
-						if ($stringData) $returnValues[] = $childElements->stringData;
-						else $returnValues[] = $childElements->data;
-					}
+		$items = $this->realization->getElement($root);
+		
+		$logicItemId = 1;
+		foreach ($items as $item) {
+			$rootId = $reversiveModelId == "" ? (string)$logicItemId : $reversiveModelId . "." . $logicItemId;
+			if ($item['isElement'] == false) {
+				if ($stringData) $returnValues[] = array (
+					"id"   => $rootId,
+					"data" => $item['stringData']
+				);
+				else $returnValues[] = array (
+					"id"   => $rootId,
+					"data" => $item['data']
+				);
+			}
+			else {
+				if ($stringData) $returnValues[] = array (
+					"id"   => $rootId,
+					"data" => $item['stringData']
+				);
+				else $returnValues[] = array (
+					"id"   => $rootId,
+					"data" => $item['data']
+				);
+				
+				$childElements = $this->getModelElement(
+					$item['id'],
+					$stringData,
+					$rootId
+				);
+				foreach ($childElements as $childElement) {
+					$returnValues[] = array (
+						"id"   => $childElement['id'],
+						"data" => $childElement['data']
+					);
 				}
 			}
+			$logicItemId++;
 		}
 		
-		$this->realization->finish();
+		if ($reversiveModelId == "") $this->realization->finish();
 		return $returnValues;
 	}
 }
@@ -135,7 +154,7 @@ class Model {
 
 Как мы видим, для класса Realization появились новые методы. Метод ready будет означать, что реализации необходимо совершить запрос и записать его в кэш, чтобы при помощи метода getElement мы могли вместо отправки запросов отправлять нужные данные из кэша. Реализуем это:  
 ```php
-class Realization {
+abstract class Realization {
 	public $isReady = false;
 	
 	public function getElement ($root = null) {
@@ -145,7 +164,7 @@ class Realization {
 	public function ready () {
 		if (!$this->isReady) {
 			$this->isReady = true;
-			// ... Запрос и запись это в кэш
+			// ... Запрос и запись в кэш
 		}
 	}
 	
@@ -157,17 +176,123 @@ class Realization {
 Для метода ready мы реализовали механизм проверки, чтобы кэш не писался несколько раз, поскольку данный метод, в виду рекурсивности метода <Model.object>->getModelElement(), будет вызываться несколько раз.  
 Теперь ближе к конкретной реализации: будем использовать pdo в нашей реализации. Будем использовать базу данных MySQL в виду того, что прописывать адрес сервера MySQL будет легче, чем путь до файла БД SQLite3 *(Однако ввиду специфики pdo и модульности нашей системы, какая БД и какая модель будет использоваться не играет значимой роли)*
 ```php
-class RealizationMySQL {  // Да, я изменил имя класса, чтобы было яснее какая именно это реализация.
+class RealizationMySQL extends Realization {  // Создал класс, наследующий Realization, чтобы можно было выбирать при необходимости между реализациями.
 	public $isReady = false;
+	private $db;               // Объект базы данных pdo
+	private $cache = array();  // Тот самый кэш
+	
+	public function __construct ($host, $user, $pass, $dbname) {
+		$this->db = new PDO("mysql:host=". $host .";dbname=". $dbname, $user, $pass);
+		$this->db->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
+	}
+	
+	private function hasLegatees ($elId) {  // Метод для определения есть ли у элемента наследники
+		foreach ($this->cache as $item) {
+			if ($item['legatee'] == $elId) return true;
+		}
+		return false;
+	}
 	
 	public function getElement ($root = null) {
-		// ... код реализации
+		$selectedItems = array();
+		
+		foreach ($this->cache as $item) {
+			if ($item['legatee'] == $root) {
+				$selectedItems[] = array(
+					"isElement"  => $this->hasLegatees($item['id']),
+					"data"       => $item['data'],
+					"stringData" => $item['data'],
+					"id"         => $item['id']
+				);
+			}
+		}
+		
+		return $selectedItems;
 	}
 	
 	public function ready () {
 		if (!$this->isReady) {
 			$this->isReady = true;
-			// ... Запрос и запись это в кэш
+			// Запрос и запись в кэш
+			$selectedItems = $this->db->query('SELECT * FROM `model-table`');
+			$selectedItems->setFetchMode(PDO::FETCH_ASSOC);
+			
+			// Очистим кэш
+			$this->cache = array();
+			while($row = $selectedItems->fetch()) {
+				$this->cache[] = $row;
+			}
+		}
+	}
+	
+	public function finish () {
+		$this->isReady = false;
+	}
+}
+```
+Теперь подробнее про структуру базы данных: 
+id (int) = NULL        | pk, uq, ai, nn | Ключ записи
+legatee (int) = NULL   |                | Информация о родительской записи (NULL, если нет родительской записи)
+data(VARCHAR(64)) = "" | nn             | Запись в текстовом виде.
+
+SQL-Запрос *(Полный дамп в папке "sql")*:
+```sql
+CREATE TABLE `realizations-db`.`model-table` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `legatee` INT NULL,
+  `data` VARCHAR(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC) VISIBLE
+);
+```
+Далее, после того, как мы определились со структурой нашей модели, мы можем закончить с реализацией класса RealizationMySQL:
+```php
+class RealizationMySQL extends Realization {  // Создал класс, наследующий Realization, чтобы можно было выбирать при необходимости между реализациями.
+	public $isReady = false;
+	private $db;               // Объект базы данных pdo
+	private $cache = array();  // Тот самый кэш
+	
+	public function __construct ($host, $user, $pass, $dbname) {
+		$this->db = new PDO("mysql:host=". $host .";dbname=". $dbname, $user, $pass);
+		$this->db->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
+	}
+	
+	private function hasLegatees ($elId) {  // Метод для определения есть ли у элемента наследники
+		foreach ($this->cache as $item) {
+			if ($item['legatee'] == $elId) return true;
+		}
+		return false;
+	}
+	
+	public function getElement ($root = null) {
+		$selectedItems = array();
+		
+		foreach ($this->cache as $item) {
+			if ($item['legatee'] == $root) {
+				$selectedItems[] = array(
+					"isElement"  => $this->hasLegatees($item['id']),
+					"data"       => $item['data'],
+					"stringData" => $item['data'],
+					"id"         => $item['id']
+				);
+			}
+		}
+		
+		return $selectedItems;
+	}
+	
+	public function ready () {
+		if (!$this->isReady) {
+			$this->isReady = true;
+			// Запрос и запись в кэш
+			$selectedItems = $this->db->query('SELECT * FROM `model-table`');
+			$selectedItems->setFetchMode(PDO::FETCH_ASSOC);
+			
+			// Очистим кэш
+			$this->cache = array();
+			while($row = $selectedItems->fetch()) {
+				$this->cache[] = $row;
+			}
 		}
 	}
 	
