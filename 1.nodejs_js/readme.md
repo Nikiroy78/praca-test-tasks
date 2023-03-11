@@ -20,3 +20,10 @@ CREATE TABLE public.dep_names (
 Все запросы будут написаны на языке запросов SQL.  
   
 1.1. Запрос (SELECT) для построения списка departments.id, для которых нет связанных названий (строк в dep_names).  
+```sql
+SELECT id
+FROM departments
+WHERE NOT EXISTS (
+	SELECT * FROM dep_names WHERE dep_names.id = departments.id
+);
+```
