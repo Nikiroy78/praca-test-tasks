@@ -5,7 +5,12 @@ function output ($root = "") {
 	$itemIerarchyId = "";  // Без этого параметра у нас будет выводиться с единицы, а не с номера элемента в общей иерархии
 	
 	$model = new Model(
-		new RealizationMySQL("127.0.0.1", "root", "root", "realizations-db")
+		new RealizationMySQL(
+			"127.0.0.1",       // Адрес базы данных MySQL
+			"root",            // Логин
+			"root",            // Пароль
+			"realizations-db"  // База данных
+		)
 	);
 	
 	if ($root == "" || $root == null) {
