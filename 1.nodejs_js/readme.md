@@ -15,7 +15,7 @@ CREATE TABLE public.dep_names (
     name_tsvector tsvector,
     CONSTRAINT dep_names_pkey PRIMARY KEY (id)
 )
-;; dep_names .department_id (многие) ссылается на departments.id (к одному)
+# dep_names .department_id (многие) ссылается на departments.id (к одному)
 ```  
 Все запросы будут написаны на языке запросов SQL.  
   
