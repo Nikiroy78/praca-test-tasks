@@ -30,8 +30,10 @@ class Realization {
 		/*
 			Возвращает объект:
 			{
-				isElement : bool   (Является ли объект элементом или же группой (имеет ли потомков))
-				data      : string (информация об объекте в текстовом виде)
+				isElement  : bool             (Является ли объект элементом или же группой (имеет ли потомков))
+				data       : string/etc.      (Информация об объекте в оптимальном для реализации виде)
+				stringData : string           (Информация об объекте в текстовом виде)
+				id         : int/string/etc.  (Индекс элемента)
 			}
 			
 			Все возвращённые объекты находятся на одном уровне:
@@ -66,7 +68,31 @@ class Model {
 		$this->name = $realization;
 	}
 	
-	public function getModelElement ($root = null) {
+	public function getModelElement ($root = null, $stringData = true) {
+		$returnValues = array();
+		while (true) {
+			$items = $realization->getElement($root);
+			foreach ($items as $item) {
+				if ($item->isElement) {
+					if ($stringData) $returnValues[] = $item->stringData;
+					else $returnValues[] = $item->data;
+				}
+				else {
+					if ($stringData) $returnValues[] = $item->stringData;
+					else $returnValues[] = $item->data;
+					
+					$childElements = getModelElement($item->id, $stringData);
+					foreach ($childElements as $childElement) {
+						if ($stringData) $returnValues[] = $childElements->stringData;
+						else $returnValues[] = $childElements->data;
+					}
+				}
+			}
+		}
+		
+		return $returnValues;
 	}
 }
 ```
+Как можно понять, <Model.object>->getModelElement(); является рекурсивным методом и из этого вытекают как плюсы, так и минусы.  
+Главным минусом является то, что при запросах к БД, у нас вместо одного запроса, который вернёт остальные элементы будет несколько запросов к БД.
