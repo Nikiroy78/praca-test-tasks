@@ -24,6 +24,14 @@ CREATE TABLE public.dep_names (
 SELECT id
 FROM departments
 WHERE NOT EXISTS (
-	SELECT * FROM dep_names WHERE dep_names.id = departments.id
+	SELECT * FROM dep_names WHERE dep_names.department_id = departments.id
 );
+```
+1.2. Запрос (SELECT) для построения списка departments.id, для которых есть 2 и более названий.
+```sql
+SELECT id
+FROM departments
+WHERE (
+	SELECT count(name_tsvector) FROM dep_names WHERE dep_names.id = departments.id AND dep_names.name_tsvector != NULL
+) >= 2;
 ```
