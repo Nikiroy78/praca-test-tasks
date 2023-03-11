@@ -1,4 +1,4 @@
-# Блок заданий "Задание, Java Script, Node JS:"
+# Блок заданий "Задание, Java Script, Node JS:" (1)
 1. Есть таблицы (PgSql, но диалект в данном случае не важен, пишите как на том который знаете):
 ```pgsql
 CREATE TABLE public.departments (
@@ -17,3 +17,4 @@ CREATE TABLE public.dep_names (
 )
 dep_names .department_id (многие) ссылается на departments.id (к одному)
 ```
+1.1. Запрос (SELECT) для построения списка departments.id, для которых нет связанных названий (строк в dep_names).
