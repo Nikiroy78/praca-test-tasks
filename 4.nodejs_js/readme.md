@@ -12,5 +12,9 @@ targetSum = 10
 ```javascript
 [-1, 11]
 ``` или 
-```javascript[11, -1]```, так как -1 + 11 = 10 = targetSum
+```javascript
+[11, -1]
+``` так как ```javascript
+-1 + 11 = 10 = targetSum
+```
 Код написанной функции прокомментируйте.
